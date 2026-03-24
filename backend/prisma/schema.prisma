@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  avatar    String?
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+  teachers Teacher[]
+  students Student[]
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Teacher {
+  id     String @id @default(uuid())
+  userId String
+
+  classrooms Classroom[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Student {
+  id          String @id @default(uuid())
+  userId      String
+  classroomId String
+
+  weeklyScores WeeklyScore[]
+  badges       StudentBadge[]
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+}
+
+model Classroom {
+  id         String   @id @default(uuid())
+  name       String
+  schoolYear Int
+  teacherId  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  students      Student[]
+  weeklyScores  WeeklyScore[]
+  studentBadges StudentBadge[]
+  badges        Badge[]
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+}
+
+model WeeklyScore {
+  id          String @id @default(uuid())
+  week        Int
+  year        Int
+  score       Int
+  reason      Reason @default(OTHER)
+  studentId   String
+  classroomId String
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, week, year, classroomId])
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  icon        String?
+  rarity      Rarity   @default(COMMON)
+  createdAt   DateTime @default(now())
+  classroomId String
+
+  students StudentBadge[]
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+}
+
+model StudentBadge {
+  id          String   @id @default(uuid())
+  earnedAt    DateTime
+  studentId   String
+  badgeId     String
+  classroomId String
+  isEquipped  Boolean  @default(false)
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  badge     Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, badgeId, classroomId])
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum Rarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum Reason {
+  BEHAVIOR
+  TASK
+  ATTENDANCE
+  PARTICIPATION
+  OTHER
+}
